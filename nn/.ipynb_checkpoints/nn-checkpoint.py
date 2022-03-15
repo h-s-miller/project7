@@ -107,7 +107,7 @@ class NeuralNetwork:
         print('b_curr.T shape {}'.format(b_curr.T.shape))
         ## Calculate Z=A*W+b ##
         # 16x64 * 64x96 + 16x1
-        Z_curr=np.dot(A_prev,W_curr.T)+b_curr[:,np.newaxis]
+        Z_curr=np.add(A_prev.dot(W_curr.T),b_curr)
         
         ## Activation ##
         if activation=='sigmoid':
