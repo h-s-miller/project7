@@ -102,12 +102,9 @@ class NeuralNetwork:
             Z_curr: ArrayLike
                 Current layer linear transformed matrix.
         """
-        print('A previous shape {}'.format(A_prev.shape))
-        print('W curr.T shape {}'.format(W_curr.T.shape))
-        print('b_curr.T shape {}'.format(b_curr.T.shape))
         ## Calculate Z=A*W+b ##
         # 16x64 * 64x96 + 16x1
-        Z_curr=np.add(A_prev.dot(W_curr.T),b_curr)
+        Z_curr=A_prev@W_curr.T+b_curr.T
         
         ## Activation ##
         if activation=='sigmoid':
@@ -117,7 +114,7 @@ class NeuralNetwork:
         else:
             raise ValueError("{} is not a defined activation function".format(activation))
         
-        return A_curr, Z_curr
+        return (A_curr, Z_curr)
         
 
     def forward(self, X: ArrayLike) -> Tuple[ArrayLike, Dict[str, ArrayLike]]:
@@ -143,13 +140,11 @@ class NeuralNetwork:
         cache['A0']=A_prev #save X in cache
         
         for idx,layer in enumerate(self.arch):
- 
-            
+
             ## load the current weights and biases ##
             layer_idx=idx+1
             W_curr=self._param_dict['W'+str(layer_idx)]
             b_curr=self._param_dict['b'+str(layer_idx)]
-            
             ## calculate forward pass ##
             A_curr, Z_curr = self._single_forward(W_curr, b_curr, A_prev, layer['activation'])
             
@@ -200,16 +195,16 @@ class NeuralNetwork:
 
         ## derivative of the activation ##
         if activation_curr == 'relu':
-            dZ_curr = self._relu_backprop(Z_curr)
+            dZ_curr = self._relu_backprop(dA_curr,Z_curr)
         elif activation_curr == 'sigmoid':
-            dZ_curr = self._sigmoid_backprop(Z_curr)
+            dZ_curr = self._sigmoid_backprop(dA_curr, Z_curr)
 
         ## backprop calulcation ##
-        dW_curr = np.dot(W_curr.T, dZ_curr) # partial Z/ partial W_L
-        dA_prev = np.dot(dZ_curr, A_prev.T) / A_dims # partial a_L/ partial Z
-        db_curr = np.sum(dZ_curr, axis = 1, keepdims = True) / A_dims # partial
+        dA_prev = (dA_curr*dZ_curr).dot(W_curr)
+        dW_curr = (A_prev.T).dot(dA_curr*dZ_curr).T # make sure this aligns with dimensions of self._param_dict[Wx]
+        db_curr = np.sum((dA_curr*dZ_curr), axis=0).reshape(b_curr.shape) # make sure this is the same dimension as bias
 
-        return dA_prev, dW_curr, db_cur
+        return dA_prev, dW_curr, db_curr
 
     def backprop(self, y: ArrayLike, y_hat: ArrayLike, cache: Dict[str, ArrayLike]):
         """
@@ -279,10 +274,10 @@ class NeuralNetwork:
             idxLayer = i + 1
 
             ### W= W - lr*dW ###
-            self._param_dict['W' + str(idxLayer)] -= self._lr * grad_dict['dW' + str(idxLayer)]
+            self._param_dict['W' + str(idxLayer)] = self._param_dict['W' + str(idxLayer)] - self._lr * grad_dict['dW' + str(idxLayer)]
             
             ### b= b - lr*db ###
-            self._param_dict['b' + str(idxLayer)] -=self._lr * grad_dict['db' + str(idxLayer)]
+            self._param_dict['b' + str(idxLayer)] = self._param_dict['b' + str(idxLayer)] - self._lr * grad_dict['db' + str(idxLayer)]
 
     def fit(self,
             X_train: ArrayLike,
@@ -443,10 +438,7 @@ class NeuralNetwork:
             dZ: ArrayLike
                 Partial derivative of current layer Z matrix.
         """
-        if Z>0:
-            dZ=1
-        else:
-            dZ=0
+        dZ = np.where(Z > 0, Z, 0)
         return dZ
         
 
@@ -465,12 +457,11 @@ class NeuralNetwork:
                 Average loss over mini-batch.
         """
         ### bound predictions b/c gonna log them ###
-        y_hat=np.clip(y_pred, 0.00001, 0.99999)
-        n = len(y_hat)
+        y_hat=np.clip(y, 0.00001, 0.99999)
         
         ### BCE = -1/N sum_1^N(y_i*P(y_i)+(1-y_i)*P(1-y_i))) ###
-        not_y = np.ones(n)-y
-        prob_not_y = np.ones(n)-y_hat 
+        not_y = np.ones(y.shape)-y
+        prob_not_y = np.ones(y_hat.shape)-y_hat 
         loss = -np.mean((y*np.log(y_hat))+((not_y)*np.log(prob_not_y)))
         return loss
 
