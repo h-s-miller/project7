@@ -103,8 +103,7 @@ class NeuralNetwork:
                 Current layer linear transformed matrix.
         """
         ## Calculate Z=A*W+b ##
-        # 16x64 * 64x96 + 16x1
-        Z_curr=A_prev@W_curr.T+b_curr.T
+        Z_curr=A_prev.T@W_curr+b_curr
         
         ## Activation ##
         if activation=='sigmoid':
@@ -310,7 +309,7 @@ class NeuralNetwork:
         ### loop thru epochs ###
         for e in range(self._epochs):
             ## shuffle the data so we get different splits when splitting into mini batches ##
-            idx = np.random.permutation(len(X_train))
+            idx = np.random.permutation(X_train.shape[0])
             X_train_shuffle,y_train_shuffle = X_train[idx], y_train[idx]
 
             
@@ -421,7 +420,7 @@ class NeuralNetwork:
             dZ: ArrayLike
                 Partial derivative of current layer Z matrix.
         """
-        dZ=self.sigmoid(Z)*(1-self._sigmoid(Z))
+        dZ=self._sigmoid(Z)*(1-self._sigmoid(Z))
         return dZ
 
     def _relu_backprop(self, dA: ArrayLike, Z: ArrayLike) -> ArrayLike:

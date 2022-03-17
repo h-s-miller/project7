@@ -5,6 +5,7 @@
 import numpy as np
 from typing import List, Tuple
 from numpy.typing import ArrayLike
+from random import randrange 
 
 
 # Defining preprocessing functions
@@ -29,7 +30,15 @@ def one_hot_encode_seqs(seq_arr: List[str]) -> ArrayLike:
                 G -> [0, 0, 0, 1]
             Then, AGA -> [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0]
     """
-    pass
+    encodings=[]
+    encode_dict={'A': [1, 0, 0, 0],
+                'T': [0, 1, 0, 0],
+                'C': [0, 0, 1, 0],
+                'G': [0, 0, 0, 1]}
+    for x in seq_arr: 
+        encodings.extend(encode_dict[x])
+        
+    return encodings
 
 
 def sample_seqs(seqs: List[str], labels: List[bool]) -> Tuple[List[str], List[bool]]:
@@ -49,4 +58,17 @@ def sample_seqs(seqs: List[str], labels: List[bool]) -> Tuple[List[str], List[bo
         sampled_labels: List[bool]
             List of labels for the sampled sequences
     """
-    pass
+    # split into samples based on labels
+    positive_seqs=[x for x,y in zip(seqs,labels) if y==1]
+    neg_seqs=[x for x,y in zip(seqs,labels) if y==0]
+
+    # want 50:50 ratio of postive to negative samples, ssince there are a small amount of positive samples, want to upsample the positive samples by randomly sampling with replacement 
+    
+    new_pos=[]
+    for i in range(len(neg_seqs)):
+        x=randrange(0,len(positive_seqs)) # random sampling 
+        new_pos.append(positive_seqs[x])
+
+    sampled_seqs=new_pos+neg_seqs
+    sampled_labels=[1]*len(new_pos)+[0]*len(neg_seqs)
+    return sampled_seqs, sampled_labels
